@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NuttX on STM32</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="https://nuttx.apache.org/assets/themes/apache/img/logo.png">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.4.0/css/font-awesome.css" rel="stylesheet" />
+
+</head>
+
+<body>
+    <header>
+        <h1>How to run NuttX on STM32 Blue Pill ?</h1>
+       <p> <img src="./assets/A_image5-removebg-preview.png" alt="Board image"></p> 
+    </header>
+
+    <main>
+        <h1 class="desc"> Introduction </h1>
+        <p class="pdesc"> I will show you how I installed NuttX on my STM32. The tutorial above has been done for some
+            time and some paths have been changed. I'm going to show them and hope that some mistakes I made can help
+            you configure and install NuttX. First of all, see some important resume after to perform some important
+            steps (it took me two days to discover this error). </p>
+
+        <p class="pdesc"> You can see the tutorial created by <a href="https://github.com/acassis" class="external-link"
+                target="_blanck"> Alan C. Assis </a> on youtube <a
+                href=" https://www.youtube.com/watch?v=heSkSd-_70g&t=3s" class="external-link" target="_blanck"> Youtube
+            </a> to remove some doubts.</p>
+
+
+        <h1 class="desc"> What is Nuttx ? </h1>
+        <p class="pdesc">Apache <a href="https://github.com/apache/incubator-nuttx" class="external-link"
+                target="_blanck"> NuttX </a>(Incubating) is a real-time operating system (RTOS) with an emphasis on
+            standards compliance and small footprint. Scalable from 8-bit to 32-bit microcontroller environments, the
+            primary governing standards in NuttX are POSIX and ANSI standards. Additional standard APIs from Unix and
+            other common RTOSs (such as VxWorks) are adopted for functionality not available under these standards, or
+            for functionality that is not appropriate for deeply-embedded environments (such as fork()).</p>
+
+        <h1 class="desc"> What is a STM32 Blue Pill ? </h1>
+        <p class="pdesc"> It's a ARM 32-bits Cortex M3, running 72MHz, 64KB or 128KB flash memory and 20KB SRAM. Power
+            supply in 3V. The
+            <a href="https://www.st.com/en/microcontrollers-microprocessors/stm32f103c8.html" class="external-link"
+                target="_blanck"> STM32F103C8</a>
+            is powerfull and cheap board compared to others like
+            <a href="https://www.arduino.cc/" class="external-link" target="_blanck"> Arduino Uno </a>
+            , for example.
+        </p>
+
+        <div class="toc" id="container-toc">
+            <p id="toc-title"> Table of Content </p>
+            <ol type="1">
+
+                <li> <a href="#need">What you need ?</a></li>
+                <li> <a href="#setComp">How to setup this components ?</a></li>
+                <li> <a href="#insOpen">Install the Openocd</a></li>
+                <li> <a href="#compNut">Compiling the NuttX OS</a>
+                    <ol type="a">
+                        <li> <a href="#kfront"> Install Kfrontends (if you do not have)</a> </li>
+                        <li> <a href="#comp"> Compliting </a> </li>
+                    </ol>
+                </li>
+
+
+                <li> <a href="#load">Loading the binary</a> </li>
+                <li> <a href="#freq">Frequent Errors</a>
+            </ol>
+        </div>
+        <h2 class="step" id="need"> What you will need (Hardware) ?</h2>
+        <ol class="list-step" id="container-stuff">
+            <li>
+                <p class="stuff"> STM32F103C8T6 <img class="stuff-img" src="./assets/A_image5-removebg-preview.png"
+                        alt="Board image"> </p>
+            </li>
+            <li>
+                <p class="stuff">ST-LINK <img class="stuff-img" src="./assets/stlink.jpg" alt=""> </p>
+            </li>
+            <li>
+                <p class="stuff">USB to TTL Serial Cable <img class="stuff-img" src="./assets/serialCable.jpeg" alt="">
+                </p>
+            </li>
+            <li>
+                <p class="stuff"> PC running Linux <img class="stuff-img" src="./assets/linuxPenguin.png"
+                        alt="Linux image penguim"></p>
+            </li>
+        </ol>
+        <h2 class="step" id="setComp">How to setup this components ?</h2>
+        <p class="pdesc"> Please, make sure that connect the STM32 pin <strong> A9</strong> to<strong> RXD </strong> USB
+            to TTL Serial Cable and STM32 pin <strong>A10</strong> to TX USB to TTL Serial Cable, ground to STM32 ground
+            and +5V to STM32 5V.</p>
+        <p class="pdesc">After do it, connect : </p>
+        <ul class="list-step">
+            <li> ST-LINK SWDIO to STM32 DIO </li>
+            <li> ST-LINK SWCLK to STM32 DCLK</li>
+            <li> ST-LINK GND to STM32 GND</li>
+        </ul>
+        <p class="pdesc"> At the end we'll have something like this: </p>
+        <div class="container-img">
+            <a href="./assets/cconec1.jpg" target="_blanck"> <img src="./assets/cconec1.jpg" alt=""></a>
+            <a href="./assets/cconec2.jpg" target="_blanck"> <img src="./assets/cconec2.jpg" alt=""></a>
+            <a href="./assets/cconec3.jpg" target="_blanck"> <img src="./assets/cconec3.jpg" id="connect3" alt=""></a>
+
+            <p> Now, connect the STLINK and USB serial Cable on USB Port. <br>
+                Check if it's everything ok through USB port using the command: </p>
+            <div class="wp_syntax">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td class="code">
+                                <pre class="text" style="font-family:monospace;">$ lsusb  </pre>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p> The output should be like the below image, with USB STLINK is connected : </p>
+            <a href="./assets/lsusb.png" target="_blanck"> <img id="lsusb" src="./assets/lsusb.png" alt=""></a>
+        </div>
+
+
+        <h2 class="step" id="insOpen"> Install the Openocd</h2>
+        <p class="pdesc"> Open the linux terminal and execute the following commands for install the openocd:
+        </p>
+        <ol class="list-step-command">
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ sudo apt-get install automake bison build-essential flex gcc-arm-none-eabi gperf git libncurses5-dev libtool libusb-dev libusb-1.0.0-dev pkg-config minicom</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ mkdir ~/nuttxspace</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ cd ~/nuttxspace </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ git clone  <a href="http://repo.or.cz/r/openocd.git" target="_blanck">http://repo.or.cz/r/openocd.git</a></pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ cd ~/nuttxspace/openocd</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$./bootstrap</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ ./configure --enable-internal-jimtcl --enable-maintainer-mode --disable-werror --disable-shared --enable-stlink --enable-jlink --enable-rlink --enable-vslink --enable-ti-icdi --enable-remote-bitbang</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ make -j4</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ sudo make install</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ cd ..</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+        </ol>
+        <h2 class="step" id="compNut"> Compiling the NuttX OS</h2>
+        <h3 class="step" id="kfront"> Install Kfrontends (if you do not have)</h3>
+        <div id="insKfront">
+            <p class="pdesc"> I didn't need to install kfrotends, but try to install it in case you need to install.
+                <br> Now try: </p>
+            <ol class="list-step-command">
+                <li>
+                    <div class="wp_syntax">
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <td class="code">
+                                        <pre class="text"
+                                            style="font-family:monospace;">$  sudo apt-get install kconfig-frontends </pre>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </li>
+            </ol>
+        </div>
+        <p class="pdesc">For compiling the Nuttx OS execute the commands below :</p>
+        <ol class="list-step-command">
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ git clone https://github.com/apache/incubator-nuttx.git nuttx</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ git clone https://github.com/apache/incubator-nuttx-apps.git apps</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+        </ol>
+        <h3 class="step" id="comp">Compiling </h3>
+        <p class="pdesc">If there was no error when executing the previous commands, run : </p>
+        <ol class="list-step-command">
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ git clone https://bitbucket.org/nuttx/tools.git</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ cd ~/nuttxspace/tools/kconfig-frontends</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ ./configure --enable-mconf</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ make -j4</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div>
+                    <p class="pdesc"> If occours the error <strong> WARNING: 'aclocal-1.15' is missing on your system
+                        </strong>
+                        after run step 4: </p>
+                    <div class="wp_syntax">
+                        <p> Run the following command:</p>
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <td class="code">
+                                        <pre class="text"
+                                            style="font-family:monospace;">$ autoreconf -f -i ; make -j4</pre>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+
+            </li>
+
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ sudo make install</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ sudo ldconfig </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ cd .. </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+        </ol>
+        <h4 class="pdesc"> Preparing the binary: </h4>
+        <ol class="list-step-command">
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ cd ~/nuttxspace/nuttx/tools  </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ ./configure.sh stm32f103-minimum/nsh </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ cd .. </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <p> This step you don't need edit nothing. But, we can if you want. Just select exit.</p>
+                <a href="./assets/Screenshot from 2022-03-10 15-17-18.png" target="_blanck"> <img id="nuttxMenu"
+                        src="./assets/Screenshot from 2022-03-10 15-17-18.png" alt=" Menu config nuttx"> </a>
+                <div class="wp_syntax">
+
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ make menuconfig</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ make -j4 </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ ls -l nuttx.bin  </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ cd ..</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+        </ol>
+        <h2 class="step" id="load"> Load the binary at STM32: </h2>
+        <ol class="list-step-command">
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ cd openocd/contrib/ </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ sudo cp 60-openocd.rules /etc/udev/rules.d/ </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ sudo udevadm trigger </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ cd ../..</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ cd nuttx </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ openocd -f interface/stlink-v2.cfg -f target/stm32f1x.cfg  </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;"> Stop the execution using Ctrl + C  </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <p class="pdesc"> Now flash the binary: </p>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;">$ openocd -f interface/stlink-v2.cfg -f target/stm32f1x.cfg -c init -c "reset halt" -c "flash write_image erase nuttx.bin 0x08000000"</pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text"
+                                        style="font-family:monospace;"> Stop the execution using Ctrl + C  </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </li>
+            <li>
+                <p class="pdesc"> Checking the serial port, searching for something like <strong>ttyUSB0</strong>: </p>
+                <p> <a href="./assets/ttyUSB0.png" target="_blanck"> <img class="oneimg" src="./assets/ttyUSB0.png"
+                            alt="log dmesg" id="tty"></a></p>
+            </li>
+            <li>
+                <p class="pdesc"> Set serial port on minicom: </p>
+                <div class="wp_syntax">
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ sudo minicom -s </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+                <p class="pdesc" id="minicom"> <a href="./assets/setPortSerial.png" target="_blanck"> <img
+                            class="oneimg" src="./assets/setPortSerial.png" alt="log dmesg"> </a> <a
+                        href="./assets/setMinicomPort.png" target="_blanck"> <img class="oneimg"
+                            src="./assets/setMinicomPort.png" alt="log dmesg"> </a> </p>
+            </li>
+
+            <li>
+                <p class="pdesc"> Save as default: </p>
+                <p class="pdesc"> <a href="./assets/minicomDefault.png" target="_blanck"> <img class="oneimg"
+                            src="./assets/minicomDefault.png" alt="log dmesg"></a></p>
+            </li>
+
+            <li>
+                <p class="pdesc"> Press the reset button on STM32 and see NuttX shell using minicom: </p>
+                <p class="pdesc"> <a href="./assets/resetBtn.jpg"> <img class="oneimg" 
+                            src="./assets/resetBtn.jpg" alt=""> </a></p>
+                <div class="wp_syntax">
+
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td class="code">
+                                    <pre class="text" style="font-family:monospace;">$ sudo minicom </pre>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="pdesc"> <a href="./assets/openMinicom.png"> <img class="oneimg" 
+                            src="./assets/openMinicom.png" alt=""></a></p>
+            </li>
+        </ol>
+        <div id="doubt">
+            <h2 class="step" id="freq"> Frequent errors: </h2>
+            <div id="info">
+                <p id="perror"> In case errors like: </p>
+                <p class="desc">
+                    Info : STLINK V2J29S7 (API v2) VID:PID 0483:3748<br>
+                    Info : Target voltage: 3.164341<br>
+                    Warn : UNEXPECTED idcode: 0x1ba01477<br>
+                    Error: expected 1 of 1: 0x2ba01477 <br></p>
+
+            </div>
+            <div id="solution">
+                <h3 class="step"> If this error occour, you should create a new .cfg: </h3>
+                <p class="pdesc"> There's a lot of fake boards on the market and you can get one of them. The error
+                    above, it's caused by UNEXPECTED <strong> idcode: 0x1ba01477 </strong> .</p>
+                <ol class="list-step-command-tip" id="solve-list">
+                    <li>
+                        <p> Go to the folder and create new file based on <strong> stm32f1x.cfg. In this case I called
+                                stm32f1x_fake.cfg.</strong> </p>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text"
+                                                style="font-family:monospace;">$ cat  ~/nuttxspace/openocd/tcl/target/stm32f1x.cfg > ~/nuttxspace/openocd/tcl/target/stm32f1x_fake.cfg</pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <li>
+                        <p> Now, open the file and replace the idcode <strong> 0x2ba01477 </strong> by <strong>
+                                0x1ba01477 </strong>. I prefer open the file using Vim editor. </p>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text"
+                                                style="font-family:monospace;">$ vim ~/nuttxspace/openocd/tcl/target/stm32f1x_fake.cfg</pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <p> Edit the file by changing the CPU_ID: </p>
+                    <p> <a href="./assets/cpuId.png"><img id="cpuid" src="./assets/cpuId.png" alt=""></a></p>
+                    <p> Now, run the following commands again: </p>
+                    <li>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text"
+                                                style="font-family:monospace;">$  cd ~/nuttxspace/openocd </pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text" style="font-family:monospace;">$ ./bootstrap </pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text"
+                                                style="font-family:monospace;">$ ./configure --enable-internal-jimtcl --enable-maintainer-mode --disable-werror --disable-shared --enable-stlink --enable-jlink --enable-rlink --enable-vslink --enable-ti-icdi --enable-remote-bitbang</pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text" style="font-family:monospace;">$ make -j4</pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text" style="font-family:monospace;">$ sudo make install </pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <p class="pdesc"> Now try flash the binary again: </p>
+                    <li>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text"
+                                                style="font-family:monospace;">$ cd ~/nuttxspace/nuttx/ </pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text"
+                                                style="font-family:monospace;">$ openocd -f interface/stlink-v2.cfg -f target/stm32f1x_fake.cfg   </pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text"
+                                                style="font-family:monospace;"> Stop the execution using Ctrl + C  </pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="wp_syntax">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td class="code">
+                                            <pre class="text"
+                                                style="font-family:monospace;">$ openocd -f interface/stlink-v2.cfg -f target/stm32f1x_fake.cfg -c init -c "reset halt" -c "flash write_image erase nuttx.bin 0x08000000"</pre>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </li>
+                </ol>
+                <p class="pdesc"> At this point, just go to minicom and execute the needed steps.</p>
+            </div>
+
+        </div>
+    </main>
+
+    <footer>
+        <em> Site created by <strong> © José Wesley </strong> </em>
+    </footer>
+
+</body>
+
+</html>
