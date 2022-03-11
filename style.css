@@ -23,7 +23,7 @@ header{
     font-size: 1.1em;
     color: rgb(78, 74, 74);
     background-color: rgba(237, 240, 243, 0.856);
-    width: 100%;
+    width: 90%;
     text-align: center;
     margin: 0px;
     margin: auto;
@@ -47,6 +47,7 @@ main{
     margin: auto;
     font-size: 1em;
     font-family: 'Roboto Condensed', sans-serif;
+    width: 90%;
 }
 main > p {
     padding-left: 10px;
